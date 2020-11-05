@@ -1,4 +1,4 @@
-setwd("/Users/ericduford/Rprojects/datacleaningcourse")
+setwd("/Users/ericduford/Rprojects/datacleaningcourse/data")
 
 #checking for data directory and downloading file
 if(!file.exists("./data")){dir.create("./data")}
