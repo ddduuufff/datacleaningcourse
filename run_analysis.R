@@ -92,3 +92,5 @@ tidy_data <- activity_names_added %>%
 	group_by(activityID, subjectID, activityType) %>%
 	summarize_each(funs(mean)) 
 
+#write the table to txt file
+write.table(tidy_data, "tidy_data.txt", row.name=FALSE)
