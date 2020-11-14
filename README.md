@@ -6,27 +6,14 @@ This project allows creating a "clean" data set from the 'UCI HAR Dataset' avail
 
 http://archive.ics.uci.edu/ml/datasets/Human+Activity+Recognition+Using+Smartphones
 
-It merges different subsets of this data into one single transformed data set --- named "clean" data set --- in order to allow performing data analysis tasks more easily. As an example, a derived data set --- named "tidy" data set) --- is created which contains the average values of each measurement variable for each activity and each subject.
-Run
+The script merges different subsets of this data into a tidy dataset
 
-Before executing the script please make sure the data set is unzipped in the working directory and set the working directory using the 'setwd' R command).
+Before executing the script the data set must be unzipped and set in the proper working directory using 'setwd' R command.
 
-Then execute the R script in the working directory where the 'UCI HAR Dataset' folder is located:
+Execute the R script in the working directory, ./data, where the 'UCI HAR Dataset' folder is located
 
-run_analysis.R
 
-The script will create the result data files "clean_dataset.txt" and "tidy_dataset.txt" in the working directory.
-
-More concretely, the script executes the following steps:
-
-    Load the individual data files of the training and test sets and merge them into one data table.
-    Filter the data table to select only mean and standard deviation columns.
-    Load labels and levels of the activity column and convert the variable into a factor variable.
-    Assign cleaned feature strings as column names for the feature measurements.
-    Merge test and training subsets into one final cleaned data set.
-    Create another derived data set with average values of each measurement variable for each activity and each subject.
-
-Dependencies
+The script will create the result data files "tidy_dataset.txt" in the working directory.
 
 The script uses the following R libraries which need to be installed:
 
@@ -34,40 +21,82 @@ The script uses the following R libraries which need to be installed:
     dplyr
     reshape2
 
-Functions
+1. Merges the training and the test sets to create one data set.
+2. Extracts only the measurements on the mean and standard deviation for each measurement.
+3. Uses descriptive activity names to name the activities in the data set
+4. Appropriately labels the data set with descriptive variable names.
+5. From the data set in step 4, creates a second, independent tidy data set with the average 
+	of each variable for each activity and each subject.
 
-load.data.subset
 
-The function loads a subset of the full 'UCI HAR Dataset' (i.e. "train" and "test" subsets).
 
-    The function loads a subset of the full data set. The steps are: ** load features table selecting only the std/mean columns ** load activities, assign descriptive labels (convert into a factor variable) ** load subjects ** filter the data table to select only mean and standard deviation columns ** load labels and levels to the activity column and convert it into a factor variable ** assign cleaned feature strings as column names for the feature measurements ** create feature table appending the activities and subjects columns
+# 1. Merge the training and test datasets
 
-create.clean.dataset
+# Reading training datasets
 
-Function to merge the two data tables created for the 'train' and 'test' subsets.
+# Reading test datasets
+x_test <- read.table("./data/UCI HAR Dataset/test/X_test.txt")
+y_test <- read.table("./data/UCI HAR Dataset/test/y_test.txt")
+subject_test <- read.table("./data/UCI HAR Dataset/test/subject_test.txt")
 
-    Parameters: requires indicating the name of the data subset (i.e. 'train' or 'test') as parameter.
-    Returns: clean data table object.
+# Reading the feature vector
+features <- read.table("./data/UCI HAR Dataset/features.txt")
+       
+# Reading activity labels
+activityLabels = read.table("./data/UCI HAR Dataset/activity_labels.txt")
+ 
+# This is skipping ahead to step 4 but let's assign variable names now before we merge the data sets
 
-create.clean.dataset.file
+# Training variable names
+colnames(x_train) <- features[,2]
+colnames(y_train) <- "activityID"
+colnames(subject_train) <- "subjectID"
 
-Function to create the data set file based on the clean data set table.
+# Test variable names
+colnames(x_test) <- features[,2]
+colnames(y_test) <- "activityID"
+colnames(subject_test) <- "subjectID"
 
-    Parameters: clean data set table object, clean data set file name.
-    Returns: none.
-    Output: clean data set file "clean_dataset.txt"
+colnames(activityLabels) <- c("activityID", "activityType")
 
-create.tidy.dataset
+# Final step is to merge all of the data into one data set
+all_train <- cbind(y_train, subject_train, x_train)
+all_test <- cbind(y_test, subject_test, x_test)
+complete_dataset <- rbind(all_train, all_test)
 
-Function to create the tidy data set based on the clean data set.
+# 2. Extracts only the measurements on the mean and standard deviation for each measurement.
 
-    Parameters: requires the clean dataset table object.
-    Returns: tidy data table object.
+# I tried using select() to just select the columns needed, but there are duplicate column names
 
-create.tidy.dataset.file
+# Let's get the column names to search against using grepl
+column_names <- colnames(complete_dataset)
 
-Function to create the tidy data set file based on the clean data set table.
+mean_and_std <- (grepl("activityID", colNames) | 
+                 grepl("subjectID", colNames) |
+                 grepl("mean..", colNames) | # This will get all of the columns containing mean
+                 grepl("std...", colNames)  # This will get all of the columns containing standard deviation
+		)
 
-    Parameters: tidy data set table object, tidy data set file name.
-    Returns: none.
-    Output: tidy data set file "tidy_dataset.txt"
+# This will subset the data to extract just the mean and std occurances 
+mean_std_extracted <- complete_dataset[ , mean_and_std == TRUE]
+
+
+# 3. Uses descriptive activity names to name the activities in the data set
+# Let's do this by merging the activity labels to our extracted data
+activity_names_added <- merge(mean_std_extracted, activityLabels,
+                                      by = "activityID",
+                                      all.x = TRUE)
+
+# 4. Appropriately labels the data set with descriptive variable names.
+# This has already completed throughout the script
+
+# 5. From the data set in step 4, creates a second, independent tidy data set with the average 
+# 	of each variable for each activity and each subject.
+
+tidy_data <- activity_names_added %>% 
+	group_by(activityID, subjectID, activityType) %>%
+	summarize_each(funs(mean)) 
+
+# write the table to txt file
+write.table(secTidySet, "tidy_data.txt", row.name=FALSE)
+
